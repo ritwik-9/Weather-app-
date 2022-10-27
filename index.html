@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<br lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <title>Weather App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<div id="app">
+<br>
+        <!-- <header class="logo"> -->
+            <!-- <nav class="navbar"> -->
+              <!-- <i class="fa-solid fa-sun" class="center"></i> -->
+              <h1>Weather Forecast</h1>
+            <!-- </nav> -->
+          <!-- </header> -->
+    <br>       
+        <div class="search">
+            <h2 class="city">Where do you want to go: </h2>
+            <input type="text" v-on:keyup.enter="weather" class="search_box" v-model="search_city">
+            <button  v-on:click="weather">search</button>
+            <button  v-on:click="resetAll">reset</button>
+            
+        </div>
+              <br>
+              <br>
+              <div class = "umbrella">{{umbrella_check}}</div>
+              
+              <br>
+              <div class = "umbrella">{{pollution_level}}</div>
+        
+    <div v-if="city_not_found" style="color: black">
+      City not Found
+    </div>
+    <div class="data" v-if="umbrella_check">
+      {{city_details.name}}
+    </div>
+    <br>
+<!-- </div> -->
+<div class = "table_content" v-if="umbrella_check!=''">
+    <table border="6">
+      <thead>
+        <tr>
+            <th>Date</th>
+            <th>Temperature °C</th>
+            <th>Wind speed m/s</th>
+            <th>Rainfall mm</th>
+            <th>Feels Like °C</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr v-for="row in forecasts">
+            <td>
+              {{row.dt_txt}}
+            </td>
+            <td>
+              {{row.main.temp}}
+            </td>
+            <td>
+              {{row.wind.speed}}
+            </td>
+            <td v-if="row.rain != undefined">
+              {{row.rain["3h"]}}
+            </td>
+            <td v-else>
+              0
+            </td>
+            <td v-if="row.main.temp<=12">
+              COLD
+            </td>
+            <td v-if="row.main.temp>12 && row.main.temp<24">
+              MILD
+            </td>
+            <td v-if="row.main.temp>=24">
+              HOT
+            </td>
+            </tr>
+      </tbody>
+    </table>
+  </div>
+  </div>
+                     
+</body>
+</html>
+
+<script>
+    const app = Vue.createApp({
+  el: "#app",
+
+  data() {
+    return {
+      search_city:'',
+      forecasts:[],
+      city_details:'',
+      umbrella_check:'',
+      city_not_found: false,
+      lat:'',
+      lon:'',
+      pollution_level:''
+      }
+    },
+
+  methods: {
+    async weather() 
+    {
+        const url ="http://localhost:5005/"+this.search_city;
+        const response = await fetch(url);
+        console.log("Response from server:")
+          console.log(response)
+          const data = await response.json();
+        if(data.cod == "404") {
+          console.log("city not found");
+          this.city_not_found = true
+          this.reset()
+        } else {
+          
+          this.city_not_found = false; 
+          console.log("Data from server:")
+          console.log(data) 
+          this.lat = data.city.coord.lat
+          this.lon = data.city.coord.lon
+          console.log("forecast:")
+          console.log(data.list)
+          this.umbrella_check = "No need to carry an umbrella"
+          for(let i=0;i<data.list.length;i++) {
+            if(data.list[i].rain) {
+              this.umbrella_check = "You need to carry an umbrella"
+              break;
+            }
+          }
+          this.city_details = data.city
+          this.pollution()
+
+          
+          this.forecasts = data.list
+        }
+    },
+    async pollution()
+    {
+      const url ="http://localhost:5005/"+this.lat+"/"+this.lon;
+      const response = await fetch(url);
+      console.log("response from server: ")
+      console.log(response)
+      const data = await response.json();
+      console.log("pollution data: ")
+      console.log(data)
+      let j;
+      for(j = 0; j < data.list.length; j++){
+      this.pollution_level=data.list[j].components.pm2_5
+      if(this.pollution_level>=10)
+      {
+        this.pollution_level= 'You should wear mask'
+      }
+      else{
+        this.pollution_level= 'No need to wear mask'
+      }
+    }
+    },
+    reset(){
+      this.umbrella_check = ''
+      console.log(this.umbrella_check)     
+      this.search_city=''
+      this.forecasts=[]
+      this.city_details=''
+      this.pollution_level=''
+    }, 
+    resetAll() {
+      this.reset()
+      this.city_not_found = false
+    }
+    
+  }
+})
+      
+
+  
+          app.mount("#app");
+                  
+      
+</script>
+
